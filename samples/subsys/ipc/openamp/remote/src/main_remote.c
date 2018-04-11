@@ -21,47 +21,8 @@
 K_THREAD_STACK_DEFINE(thread_stack, APP_TASK_STACK_SIZE);
 static struct k_thread thread_data;
 
-static K_SEM_DEFINE(channel_created, 0, 1);
-
-static K_SEM_DEFINE(message_received, 0, 1);
-static volatile unsigned int received_data;
-
-static struct rsc_table_info rsc_info;
-static struct hil_proc *proc;
-
-static struct rpmsg_channel *rp_channel;
-static struct rpmsg_endpoint *rp_endpoint;
-
-static void rpmsg_recv_callback(struct rpmsg_channel *channel, void *data,
-				int data_length, void *private, unsigned long src)
-{
-	received_data = *((unsigned int *) data);
-	k_sem_give(&message_received);
-}
-
-static void rpmsg_channel_created(struct rpmsg_channel *channel)
-{
-	rp_channel = channel;
-	rp_endpoint = rpmsg_create_ept(rp_channel, rpmsg_recv_callback, RPMSG_NULL, RPMSG_ADDR_ANY);
-	k_sem_give(&channel_created);
-}
-
-static void rpmsg_channel_deleted(struct rpmsg_channel *channel)
-{
-	rpmsg_destroy_ept(rp_endpoint);
-}
-
-static unsigned int receive_message(void)
-{
-	while (k_sem_take(&message_received, K_NO_WAIT) != 0)
-		hil_poll(proc, 0);
-	return received_data;
-}
-
-static int send_message(unsigned int message)
-{
-	return rpmsg_send(rp_channel, &message, sizeof(message));
-}
+static struct virtio_device vdev;
+static struct rpmsg_virtio rpmsg_vdev;
 
 void app_task(void *arg1, void *arg2, void *arg3)
 {
@@ -72,6 +33,14 @@ void app_task(void *arg1, void *arg2, void *arg3)
 	struct metal_init_params metal_params = METAL_INIT_DEFAULTS;
 	metal_init(&metal_params);
 
+	rpmsg_vdev.role = RPMSG_REMOTE;
+	int status = rpmsg_vdev_init(&rpmsg_vdev, &vdev, NULL, 0);
+	if(status != RPMSG_SUCCESS)
+	{
+		printk("Error: rpmsg_vdev_init() failed with status %d\n", status);
+		goto _cleanup;
+	}
+#if 0
 	proc = platform_init(RPMSG_REMOTE);
 	if (proc == NULL) {
 		goto _cleanup;
@@ -100,10 +69,12 @@ void app_task(void *arg1, void *arg2, void *arg3)
 		}
 	}
 
-_cleanup:
 	if (rproc_ptr) {
 		remoteproc_resource_deinit(rproc_ptr);
 	}
+#endif
+_cleanup:
+	metal_finish();
 }
 
 void main(void)

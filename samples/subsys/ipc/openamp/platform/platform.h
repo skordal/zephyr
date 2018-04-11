@@ -19,7 +19,7 @@
 #define VRING_ALIGNMENT         4
 #define VRING_SIZE              32
 
-struct hil_proc *platform_init(int role);
+int platform_init(int role);
 
 #endif
 

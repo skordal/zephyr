@@ -10,6 +10,7 @@
 #include <openamp/open_amp.h>
 #include "platform.h"
 
+#if 0
 static K_SEM_DEFINE(data_sem, 0, 1);
 static struct device *ipm_handle = NULL;
 
@@ -97,3 +98,4 @@ struct hil_platform_ops platform_ops = {
 	.release = release
 };
 
+#endif
