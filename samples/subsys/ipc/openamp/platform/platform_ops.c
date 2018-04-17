@@ -8,16 +8,13 @@
 #include <ipm.h>
 
 #include <openamp/open_amp.h>
+#include <openamp/remoteproc.h>
 #include "platform.h"
+
+static struct device *ipm_handle = NULL;
 
 #if 0
 static K_SEM_DEFINE(data_sem, 0, 1);
-static struct device *ipm_handle = NULL;
-
-static void platform_ipm_callback(void *context, u32_t id, volatile void *data)
-{
-	k_sem_give(&data_sem);
-}
 
 static int enable_interrupt(struct proc_intr *intr)
 {
@@ -27,7 +24,6 @@ static int enable_interrupt(struct proc_intr *intr)
 static void notify(struct hil_proc *proc, struct proc_intr *intr_info)
 {
 	uint32_t dummy_data = 0x12345678; /* Some data must be provided */
-
 	ipm_send(ipm_handle, 0, 0, &dummy_data, sizeof(dummy_data));
 }
 
@@ -99,3 +95,100 @@ struct hil_platform_ops platform_ops = {
 };
 
 #endif
+
+static void platform_ipm_callback(void *context, u32_t id, volatile void *data)
+{
+}
+
+static struct remoteproc *init(struct remoteproc_ops *ops, void *arg)
+{
+	static struct remoteproc rproc_instance;
+	memset(&rproc_instance, 0, sizeof(struct remoteproc));
+
+	ipm_handle = device_get_binding("MAILBOX_0");
+	if (!ipm_handle) {
+		return NULL;
+	}
+
+	ipm_register_callback(ipm_handle, platform_ipm_callback, NULL);
+	ipm_set_enabled(ipm_handle, 1);
+
+	return &rproc_instance;
+}
+
+static void remove(struct remoteproc *rproc)
+{
+	metal_unused(rproc);
+	ipm_set_enabled(ipm_handle, 0);
+}
+
+static void *mmap(struct remoteproc *rproc,
+		metal_phys_addr_t *pa, metal_phys_addr_t *da,
+		size_t size, unsigned int attributes,
+		struct metal_io_region **io)
+{
+	metal_unused(rproc);
+	metal_unused(pa);
+	metal_unused(da);
+	metal_unused(io);
+
+	return (void *) pa;
+}
+
+static int handle_rsc(struct remoteproc *rproc, void *rsc, size_t len)
+{
+	metal_unused(rproc);
+	metal_unused(rsc);
+	metal_unused(len);
+
+	return 0;
+}
+
+static int start(struct remoteproc *rproc)
+{
+	return 0;
+}
+
+static int stop(struct remoteproc *rproc)
+{
+	return 0;
+}
+
+static int shutdown(struct remoteproc *rproc)
+{
+	return 0;
+}
+
+static int kick(struct remoteproc *rproc, int id)
+{
+	/* Some data must be provided to this function. */
+	return ipm_send(ipm_handle, 0, 0, &id, sizeof(id));
+}
+
+struct remoteproc_ops platform_ops = {
+	.init = init,
+	.remove = remove,
+	.mmap = mmap,
+	.handle_rsc = handle_rsc,
+	.start = start,
+	.stop = stop,
+	.shutdown = shutdown,
+	.kick = kick,
+};
+
+/*
+struct remoteproc_ops {
+        struct remoteproc *(*init)(struct remoteproc_ops *ops, void *arg);
+        void (*remove)(struct remoteproc *rproc);
+        void *(*mmap)(struct remoteproc *rproc,
+                      metal_phys_addr_t *pa, metal_phys_addr_t *da,
+                      size_t size, unsigned int attribute,
+                      struct metal_io_region **io);
+        int (*handle_rsc)(struct remoteproc *rproc, void *rsc, size_t len);
+        int (*start)(struct remoteproc *rproc);
+        int (*stop)(struct remoteproc *rproc);
+        int (*shutdown)(struct remoteproc *rproc);
+        int (*kick)(struct remoteproc *rproc, int id);
+};
+*/
+

@@ -21,9 +21,6 @@
 K_THREAD_STACK_DEFINE(thread_stack, APP_TASK_STACK_SIZE);
 static struct k_thread thread_data;
 
-static struct virtio_device vdev;
-static struct rpmsg_virtio rpmsg_vdev;
-
 void app_task(void *arg1, void *arg2, void *arg3)
 {
 	ARG_UNUSED(arg1);
@@ -35,15 +32,21 @@ void app_task(void *arg1, void *arg2, void *arg3)
 	struct metal_init_params metal_params = METAL_INIT_DEFAULTS;
 	metal_init(&metal_params);
 
+	struct remoteproc *remote = platform_init(RPMSG_MASTER);
+	if(remote == NULL)
+	{
+		printk("Error: platform_init() failed\n");
+		goto _cleanup;
+	}
+#if 0
 	rpmsg_vdev.role = RPMSG_MASTER;
-	int status = rpmsg_vdev_init(&rpmsg_vdev, &vdev, (void *) SHM_START_ADDRESS, SHM_SIZE);
+	int status = rpmsg_init_vdev(&rpmsg_vdev, &vdev, (void *) SHM_START_ADDRESS, SHM_SIZE);
 	if(status != RPMSG_SUCCESS)
 	{
 		printk("Error: rpmsg_vdev_init() failed with status %d\n", status);
 		goto _cleanup;
 	}
 
-#if 0
 	proc = platform_init(RPMSG_MASTER);
 	if (proc == NULL) {
 		printk("platform_init() failed\n");

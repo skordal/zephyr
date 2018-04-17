@@ -19,7 +19,7 @@
 #define VRING_ALIGNMENT         4
 #define VRING_SIZE              32
 
-int platform_init(int role);
+struct remoteproc* platform_init(int role);
 
 #endif
 
