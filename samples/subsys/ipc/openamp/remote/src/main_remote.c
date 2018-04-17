@@ -36,6 +36,14 @@ void app_task(void *arg1, void *arg2, void *arg3)
 		printk("Error: platform_init() failed\n");
 		goto _cleanup;
 	}
+
+	struct rpmsg_virtio_device rvdev;
+
+	struct virtio_device vdev;
+	vdev.func = &remoteproc_virtio_dispatch_funcs;
+	vdev.role = RPMSG_REMOTE;
+
+	int status = rpmsg_init_vdev(&rvdev, &vdev, (void *) SHM_START_ADDRESS, SHM_SIZE);
 #if 0
 	memset(&rpmsg_vdev, 0, sizeof(struct rpmsg_virtio));
 	rpmsg_vdev.role = RPMSG_REMOTE;
